@@ -1,0 +1,273 @@
+# This file contains pin mappings for the stock 2020 Creality Ender 3
+# V2 Neo. To use this config, during "make menuconfig" select the
+# STM32F103 with a "28KiB bootloader" and serial (on USART1 PA10/PA9)
+# communication.
+
+# If you prefer a direct serial connection, in "make menuconfig"
+# select "Enable extra low-level configuration options" and select
+# serial (on USART3 PB11/PB10), which is broken out on the 10 pin IDC
+# cable used for the LCD module as follows:
+# 3: Tx, 4: Rx, 9: GND, 10: VCC
+
+# Flash this firmware by copying "out/klipper.bin" to a SD card and
+# turning on the printer with the card inserted. The firmware
+# filename must end in ".bin" and must not match the last filename
+# that was flashed.
+
+# This also works for the GD32F303 based Creality 4.2.2 board.
+
+# See docs/Config_Reference.md for a description of parameters.
+
+[stepper_x]
+step_pin: PC2
+dir_pin: PB9
+enable_pin: !PC3
+microsteps: 16
+rotation_distance: 40
+endstop_pin: ^PA5
+position_endstop: 0
+position_max: 235
+homing_speed: 80
+
+[stepper_y]
+step_pin: PB8
+dir_pin: PB7
+enable_pin: !PC3
+microsteps: 16
+rotation_distance: 40
+endstop_pin: ^PA6
+position_endstop: 0
+position_max: 235
+homing_speed: 80
+
+[stepper_z]
+step_pin: PB6
+dir_pin: !PB5
+enable_pin: !PC3
+microsteps: 16
+rotation_distance: 8
+endstop_pin: probe:z_virtual_endstop
+position_max: 250
+position_min: -6
+homing_speed: 4
+second_homing_speed: 1
+homing_retract_dist: 2.0
+
+[extruder]
+max_extrude_only_distance: 1000.0
+pressure_advance: 0.055
+pressure_advance_smooth_time: 0.04
+step_pin: PB4
+dir_pin: PB3
+enable_pin: !PC3
+microsteps: 16
+gear_ratio: 42:12
+rotation_distance: 26.359
+nozzle_diameter: 0.400
+filament_diameter: 1.750
+heater_pin: PA1
+sensor_type: EPCOS 100K B57560G104F
+sensor_pin: PC5
+min_extrude_temp: 170
+min_temp: 0
+max_temp: 300
+control: pid
+pid_Kp: 23.561
+pid_Ki: 1.208
+pid_Kd: 114.859
+
+
+[heater_bed]
+min_temp: 0
+max_temp: 250
+heater_pin: PA2
+sensor_type: EPCOS 100K B57560G104F
+sensor_pin: PC4
+control: pid
+max_power: 1.0
+#verify_heater: False  # <- desativa verificação
+pid_kp: 70.405
+pid_ki: 1.229
+pid_kd: 1008.553
+
+[fan]
+pin: PA0
+
+
+
+
+[mcu]
+serial: /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
+restart_method: command
+
+[printer]
+kinematics: cartesian
+max_velocity: 300
+max_accel: 7000 #era 5000
+max_accel_to_decel: 7000 #apagar depois
+max_z_velocity: 5
+square_corner_velocity: 5.0
+max_z_accel: 100
+
+[input_shaper] 
+shaper_freq_x: 61.3 # frequency for the X mark of the test model 
+shaper_freq_y: 53.6 # frequency for the Y mark of the test model 
+shaper_type: mzv
+
+[bltouch]
+sensor_pin: ^PB1
+control_pin: PB0
+x_offset: -45.0
+y_offset: -10.0
+#z_offset: 0
+speed: 20
+samples: 1
+sample_retract_dist: 8.0
+
+[safe_z_home]
+home_xy_position: 160,120
+speed: 150
+z_hop: 10
+z_hop_speed: 10
+
+
+
+# [display]
+# The Ender 3 v2 Neo's 4.3" LCD display is not supported by klipper
+
+[output_pin beeper]
+pin: PB13
+
+[virtual_sdcard]
+path: /home/rfigueiredo/printer_data/gcodes
+
+[pause_resume]
+
+[display_status]
+
+[bed_mesh]
+speed: 80
+horizontal_move_z: 5
+mesh_min: 10, 15       
+mesh_max: 220, 220  
+probe_count: 5,5 
+mesh_pps: 2,2
+fade_start: 1
+fade_end: 10
+fade_target: 0
+
+[gcode_macro START_PRINT]
+description: Geração automática para início de impressão
+gcode:
+    {% set BED_TEMP = params.BED_TEMP|default(60)|float %}
+    {% set EXTRUDER_TEMP = params.EXTRUDER_TEMP|default(200)|float %}
+
+    M117 A aquecer cama...           ; Mensagem no ecrã (se suportado)
+    M140 S{BED_TEMP}                 ; Define temperatura da cama (não espera)
+    M104 S{EXTRUDER_TEMP}           ; Define temperatura do extrusor (não espera)
+
+    G90                              ; Coordenadas absolutas
+    G28                              ; Home dos eixos
+
+    M117 Aguardar cama...           
+    M190 S{BED_TEMP}                 ; Aguarda cama atingir temperatura
+
+    M117 A aguardar extrusor...     
+    M109 S{EXTRUDER_TEMP}            ; Aguarda extrusor atingir temperatura
+
+    BED_MESH_PROFILE LOAD=default    ; Carrega mesh gravado
+
+    G1 Z10 F3000                     ; Levanta bico
+    G92 E0                           ; Reinicia extrusor
+    G1 X0 Y0 F1000                   ; Vai para canto
+    G1 Z0.28 F120                    ; Aproxima-se da cama
+    G1 Y140 E10 F1500                ; Purga boquilha
+    G1 X2.3 F5000
+    G92 E0                           ; Reinicia extrusor
+    G1 Y10 E10 F1200
+    G92 E0
+    M117 Impressão a começar...
+
+[gcode_macro END_PRINT]
+description: Macro para fim da impressão
+gcode:
+    M400                        ; Aguarda todos os movimentos
+    M104 S0                     ; Desliga o extrusor
+    M140 S0                     ; Desliga a cama
+    M106 S0                     ; Desliga ventoinha
+
+    G91                         ; Modo relativo
+    G1 E-3 F2700                ; Retrai o filamento
+    G1 Z10 F3000                ; Sobe o bico 10mm
+    G90                         ; Modo absoluto
+
+    G1 X0 Y235 F3000            ; Move o bico para a frente, longe da peça
+    M84                         ; Desliga os motores
+
+    M117 Impressão terminada!   ; Mensagem no visor (se suportado)
+
+[gcode_macro CANCEL_PRINT]
+description: Macro para cancelar uma impressão de forma segura
+rename_existing: CANCEL_PRINT_BASE
+gcode:
+    M400                        ; Aguarda todos os movimentos
+    M104 S0                     ; Desliga o extrusor
+    M140 S0                     ; Desliga a cama
+    M106 S0                     ; Desliga ventoinha
+
+    G91                         ; Modo relativo
+    G1 E-2 F1800                ; Retrai um pouco o filamento
+    G1 Z10 F3000                ; Sobe o bico
+    G90                         ; Modo absoluto
+
+    G1 X0 Y235 F3000            ; Move o bico para a frente
+    M84                         ; Desliga os motores
+
+    CANCEL_PRINT_BASE           ; Chama o comportamento base
+
+[gcode_macro PAUSE]
+description: Pausa a impressão
+rename_existing: PAUSE_BASE
+gcode:
+    ##### START OF PAUSE GCODE #####
+    M400                        ; Aguarda todos os comandos
+    G91                         ; Modo relativo
+    G1 Z10 F600                 ; Sobe o nozzle 10mm
+    G90                         ; Modo absoluto
+    G1 X0 Y235 F3000            ; Move o bico para a frente
+    M104 S0                     ; (opcional) Desliga extrusor
+    ##### END OF PAUSE GCODE #####
+
+[gcode_macro RESUME]
+description: Retoma a impressão
+rename_existing: RESUME_BASE
+gcode:
+    ##### START OF RESUME GCODE #####
+    M109 S{printer.extruder.target} ; Garante que o extrusor aquece para o alvo anterior
+    RESUME_BASE
+    ##### END OF RESUME GCODE #####
+
+#*# <---------------------- SAVE_CONFIG ---------------------->
+#*# DO NOT EDIT THIS BLOCK OR BELOW. The contents are auto-generated.
+#*#
+#*# [bltouch]
+#*# z_offset = 2.125
+#*#
+#*# [bed_mesh default]
+#*# version = 1
+#*# points =
+#*# 	  0.140000, 0.080000, 0.082500, 0.117500, 0.142500
+#*# 	  0.072500, -0.007500, 0.002500, 0.027500, 0.052500
+#*# 	  -0.025000, -0.032500, -0.017500, 0.005000, 0.017500
+#*# 	  -0.062500, -0.080000, -0.025000, -0.010000, 0.025000
+#*# 	  -0.007500, -0.065000, -0.047500, -0.010000, 0.047500
+#*# x_count = 5
+#*# y_count = 5
+#*# mesh_x_pps = 2
+#*# mesh_y_pps = 2
+#*# algo = lagrange
+#*# tension = 0.2
+#*# min_x = 10.0
+#*# max_x = 190.0
+#*# min_y = 15.0
+#*# max_y = 225.0
